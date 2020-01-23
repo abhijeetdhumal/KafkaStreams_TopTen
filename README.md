@@ -36,7 +36,7 @@ Here in this solution we are running the code by downloading the repo from githu
 The approach used to calculate unique users(using hashmap) in this solution will work well when the data received is small in size during timeframe. 
 When dealing with the scale we need to look for other algorithm like **HyperLogLog** which performs really well for huge data. Its an probabilistic approximation algorithm which is memory efficient. However it gives the results with error margin of 2%. 
 
-
+### 3. Unit Tests
 
 
 
