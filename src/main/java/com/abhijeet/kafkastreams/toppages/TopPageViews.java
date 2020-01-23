@@ -96,8 +96,8 @@ public class TopPageViews {
 		final KTable<Windowed<String>, GenericRecord> pageViewsStats = topPageViews
 				.aggregateUsersByGender(usersPageViews);
 
+		pageViewsStats.toStream().print(Printed.toSysOut());
 		final KStream<String, GenericRecord> topPagesStream = topPageViews.topTenPagesByGender(pageViewsStats);
-
 		topPagesStream.to("top_pages");
 		topPagesStream.print(Printed.toSysOut());
 
@@ -232,7 +232,7 @@ public class TopPageViews {
 			KStream<String, GenericRecord> usersPageViews) {
 		final Schema aggregatedSchema = loadSchema(UserPageViewConstants.AGGREGATION_SCHEMA_FILE);
 
-		final KTable<Windowed<String>, GenericRecord> pageViewsStats = usersPageViews
+		final KTable<Windowed<String>, GenericRecord> pageViewStats = usersPageViews
 				.groupBy((userId, pageView) -> String.format("%s:%s", pageView.get("gender"), pageView.get("pageid")))
 				.windowedBy(TimeWindows.of(Duration.ofSeconds(UserPageViewConstants.HOPPING_WINDOW_TIME)).advanceBy(Duration.ofSeconds(UserPageViewConstants.WINDOW_ADVANCE_TIME))).aggregate(() -> {
 					GenericRecord record = null;
@@ -259,9 +259,9 @@ public class TopPageViews {
 						e.printStackTrace();
 					}
 					return agg;
-				}, Materialized.as("agg-page_views"));
+				}, Materialized.as("agg-pageviews"));
 
-		return pageViewsStats;
+		return pageViewStats;
 	}
 
 	private Schema loadSchema(String schemaFileName) {
