@@ -1,0 +1,20 @@
+{
+  "type": "record",
+  "name": "pageviews",
+  "namespace": "ksql",
+  "fields": [
+    {
+      "name": "viewtime",
+      "type": "long"
+    },
+    {
+      "name": "userid",
+      "type": "String"
+    },
+    {
+      "name": "pageid",
+      "type": "String"
+    }
+  ],
+  "connect.name": "ksql.pageviews"
+}

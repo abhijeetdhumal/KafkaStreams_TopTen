@@ -1,0 +1,11 @@
+{
+  "namespace": "pageviews",
+  "name": "top_page",
+  "type": "record",
+  "fields": [
+    {"name": "gender", "type": "string"},
+    {"name": "pageid", "type": "string"},
+    {"name": "total_viewtime",  "type": "long"},
+    {"name": "unique_users", "type": "long"}
+  ]
+}
