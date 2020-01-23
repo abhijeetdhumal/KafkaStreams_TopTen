@@ -44,24 +44,15 @@ import com.abhijeet.kafkastreams.toppages.utils.PriorityQueueSerde;
 
 import io.confluent.kafka.serializers.AbstractKafkaAvroSerDeConfig;
 import io.confluent.kafka.streams.serdes.avro.GenericAvroSerde;
+import com.abhijeet.kafkastreams.toppages.utils.UserPageViewConstants;
 
-class UserPageViewConstants {
-	public static final String APPLICATION_ID_CONFIG = "top10pageviews";
-	public static final String BOOTSTRAP_SERVERS_CONFIG = "localhost:9092";
-	public static final String AUTO_OFFSET_RESET_CONFIG = "earliest";
-	public static final String SCHEMA_REGISTRY_URL = "http://localhost:8081";
-	public static final String USER_PAGEVIEW_SCHEMA_FILE = "users_pageviews.avsc";
-	public static final String TOP_PAGES_SCHEMA_FILE = "toppages.avsc";
-	public static final String GENDER = "gender";
-	public static final String PAGE_ID = "pageid";
-	public static final String TOTAL_VIEW_TIME = "total_viewtime";
-	public static final String UNIQUE_USERS = "unique_users";
-	public static final String USER_ID = "userid";
-	public static final String VIEW_TIME = "viewtime";
-	public static final String PAGEVIEWS = "pageviews";
-	public static final String USERS = "users";
-}
 
+/**
+ * This is Kafka Streaming application which is consuming data from Confluents quick-starts 
+ * users & pageviews topics and generates top 10 page id by viewtime
+ * @author abhijeet
+ *
+ */
 public class TopPageViews {
 
 	private static Serde<String> keySerde;
@@ -78,24 +69,6 @@ public class TopPageViews {
 		this.valueSerde = valueSerde;
 
 	}
-
-	private Properties loadProperties() {
-		final Properties props = new Properties();
-		props.put(StreamsConfig.APPLICATION_ID_CONFIG, UserPageViewConstants.APPLICATION_ID_CONFIG);
-		props.put(StreamsConfig.BOOTSTRAP_SERVERS_CONFIG, UserPageViewConstants.BOOTSTRAP_SERVERS_CONFIG);
-		props.put(StreamsConfig.DEFAULT_KEY_SERDE_CLASS_CONFIG, Serdes.String().getClass());
-		props.put(StreamsConfig.DEFAULT_VALUE_SERDE_CLASS_CONFIG, Serdes.String().getClass());
-
-		props.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, UserPageViewConstants.AUTO_OFFSET_RESET_CONFIG);
-		props.put(StreamsConfig.CACHE_MAX_BYTES_BUFFERING_CONFIG, 0);
-		final String schemaRegistryUrl = UserPageViewConstants.SCHEMA_REGISTRY_URL;
-		props.put(AbstractKafkaAvroSerDeConfig.SCHEMA_REGISTRY_URL_CONFIG, schemaRegistryUrl);
-		props.put(StreamsConfig.DEFAULT_KEY_SERDE_CLASS_CONFIG, Serdes.String().getClass().getName());
-		props.put(StreamsConfig.DEFAULT_VALUE_SERDE_CLASS_CONFIG, GenericAvroSerde.class);
-		return props;
-	}
-
-
 
 	public static void main(String[] args) throws IOException {
 		final Serde<String> keySerde = Serdes.String();
@@ -149,6 +122,28 @@ public class TopPageViews {
 		System.exit(0);
 	}
 	
+	private Properties loadProperties() {
+		final Properties props = new Properties();
+		props.put(StreamsConfig.APPLICATION_ID_CONFIG, UserPageViewConstants.APPLICATION_ID_CONFIG);
+		props.put(StreamsConfig.BOOTSTRAP_SERVERS_CONFIG, UserPageViewConstants.BOOTSTRAP_SERVERS_CONFIG);
+		props.put(StreamsConfig.DEFAULT_KEY_SERDE_CLASS_CONFIG, Serdes.String().getClass());
+		props.put(StreamsConfig.DEFAULT_VALUE_SERDE_CLASS_CONFIG, Serdes.String().getClass());
+		props.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG, UserPageViewConstants.AUTO_OFFSET_RESET_CONFIG);
+		props.put(StreamsConfig.CACHE_MAX_BYTES_BUFFERING_CONFIG, 0);
+		final String schemaRegistryUrl = UserPageViewConstants.SCHEMA_REGISTRY_URL;
+		props.put(AbstractKafkaAvroSerDeConfig.SCHEMA_REGISTRY_URL_CONFIG, schemaRegistryUrl);
+		props.put(StreamsConfig.DEFAULT_KEY_SERDE_CLASS_CONFIG, Serdes.String().getClass().getName());
+		props.put(StreamsConfig.DEFAULT_VALUE_SERDE_CLASS_CONFIG, GenericAvroSerde.class);
+		return props;
+	}
+	
+	
+	/**
+	 * This method joins pageviews with users globalktable
+	 * @param viewsByUserStream
+	 * @param usersTable
+	 * @return
+	 */
 	private KStream<String, GenericRecord> joinUsersWithPageviews(KStream<String, GenericRecord> viewsByUserStream,
 			GlobalKTable<String, GenericRecord> usersTable) {
 
@@ -175,7 +170,12 @@ public class TopPageViews {
 		return genericAvroSerde;
 	}
 	
-	
+	/**
+	 * This method generates top 10 page ids aggregated by gender, 
+	 * It uses priorityqueue to get top 10 pages 
+	 * @param pageViewsStats
+	 * @return topPageStream
+	 */
 	private KStream<String, GenericRecord> topTenPagesByGender(KTable<Windowed<String>, GenericRecord> pageViewsStats) {
 
 		final Schema topPageSchema = loadSchema(UserPageViewConstants.TOP_PAGES_SCHEMA_FILE);
@@ -223,13 +223,18 @@ public class TopPageViews {
 		return topPagesStream;
 	}
 
+	/**
+	 * Aggregates the users on view_time & unique users in to hashmap by gender and page_id
+	 * @param usersPageViews
+	 * @return pageViewsStats stream
+	 */
 	private KTable<Windowed<String>, GenericRecord> aggregateUsersByGender(
 			KStream<String, GenericRecord> usersPageViews) {
-		final Schema aggregatedSchema = loadSchema("aggregated.avsc");
+		final Schema aggregatedSchema = loadSchema(UserPageViewConstants.AGGREGATION_SCHEMA_FILE);
 
 		final KTable<Windowed<String>, GenericRecord> pageViewsStats = usersPageViews
 				.groupBy((userId, pageView) -> String.format("%s:%s", pageView.get("gender"), pageView.get("pageid")))
-				.windowedBy(TimeWindows.of(Duration.ofSeconds(60)).advanceBy(Duration.ofSeconds(10))).aggregate(() -> {
+				.windowedBy(TimeWindows.of(Duration.ofSeconds(UserPageViewConstants.HOPPING_WINDOW_TIME)).advanceBy(Duration.ofSeconds(UserPageViewConstants.WINDOW_ADVANCE_TIME))).aggregate(() -> {
 					GenericRecord record = null;
 					try {
 						record = new GenericData.Record(aggregatedSchema);

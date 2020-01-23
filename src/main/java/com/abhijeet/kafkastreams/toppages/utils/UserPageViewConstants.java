@@ -1,6 +1,6 @@
 package com.abhijeet.kafkastreams.toppages.utils;
 
-class UserPageViewConstants {
+public class UserPageViewConstants {
 	public static final String APPLICATION_ID_CONFIG = "top10pageviews";
 	public static final String BOOTSTRAP_SERVERS_CONFIG = "localhost:9092";
 	public static final String AUTO_OFFSET_RESET_CONFIG = "earliest";
@@ -15,4 +15,7 @@ class UserPageViewConstants {
 	public static final String VIEW_TIME = "viewtime";
 	public static final String PAGEVIEWS = "pageviews";
 	public static final String USERS = "users";
+	public static final String AGGREGATION_SCHEMA_FILE = "aggregated.avsc";
+	public static final int WINDOW_ADVANCE_TIME = 10;
+	public static final int HOPPING_WINDOW_TIME = 60;
 }
